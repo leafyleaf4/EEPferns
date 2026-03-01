@@ -12,6 +12,7 @@ library(osmplotr) #using this
 library(sf)
 
 
+#dont know if this code will actually work yet - not running on laptop 
 
 #create area for map 
 bbox<-get_bbox(c(-3.307356, 55.886465, -2.95, 56.00))
