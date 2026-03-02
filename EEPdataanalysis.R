@@ -119,7 +119,7 @@ simulateResiduals(fittedModel = test2, plot=T) #checking assumptions using DHARM
 #slightly grim unfortunately 
 
 #trying again but logging 
-ferndata<- ferndata %>% mutate(log_frondlength=log(frondlength))
+ferndata<- ferndata %>% mutate(log_frondlength=log(frondlength), log_bladelength=log(bladelength))
 
 #same again but with logged frondlength USE THIS ONE!!!!!!
 test3<-lmer(log_frondlength~Substrate+(1|Species), data=ferndata, REML=TRUE)
@@ -150,6 +150,10 @@ emmeans(test3, list(pairwise~Substrate), adjust ="tukey")
 
 
 
+# graph for the distribution of species in different habitats 
+
+#use code i used for PCE report in this too 
+species_sum <- ferndata %>% group_by(Substrate) %>%  count(Species)
 
 
 
