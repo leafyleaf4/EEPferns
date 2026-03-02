@@ -11,7 +11,7 @@ library(lme4) #for fancy modelling
 library(lmerTest) #testing lmer
 library(scales) #not using yet
 library(DHARMa) #using this!
-library(StatisticalModels)
+library(StatisticalModels) #for r2 glmer however???? it doesnt work :(
 library(ggeffects) #not using yet 
 library(performance) #not usiung yet 
 library(ggthemes) #for pretty grpahs
@@ -100,7 +100,6 @@ anova(test1)
 
 #very statistically significant, and high F value, but also didnt quite fit homodescadicity thingy as much as i wanted 
 
-
 #mixed effect model with species as random effect
 test2<-lmer(frondlength~Substrate+(1|Species), data=ferndata, REML=TRUE)
 anova(test2) 
@@ -108,6 +107,10 @@ anova(test2)
 
 rand(test2)
 #likelyhood ratio improved model fit
+
+#get r2 
+R2GLMER(test2)
+
 
 
 
@@ -118,20 +121,29 @@ simulateResiduals(fittedModel = test2, plot=T) #checking assumptions using DHARM
 #trying again but logging 
 ferndata<- ferndata %>% mutate(log_frondlength=log(frondlength))
 
-#same again but with logged frondlength 
+#same again but with logged frondlength USE THIS ONE!!!!!!
 test3<-lmer(log_frondlength~Substrate+(1|Species), data=ferndata, REML=TRUE)
 anova(test3) 
 #p and f value stronger than before 
 rand(test3)
 #not quite as good fit but still works well
 summary(test3)
+#look at the intercept and substrate rocks and soil under fixed effects,
+#look at estimate, and from that interpret the percent change from each substrate 
+
+#get r2
+R2GLMER(test3)
+
+
 #DHARMA time 
 simulateResiduals(fittedModel = test3, plot=T)
 #DHARMA LESS BAD :DDDDD
 #THIS IS THE HYPE ONE WE WANT TO GO WITH THISSSS!!!! YIPEEE (as long as things dont change when we fix species)
 
+
 #tukeys test time: 
 emmeans(test3, list(pairwise~Substrate), adjust ="tukey")
+#from this, need to back-transform means (exponentiate), to get percentage difference between each 
 
 
 
