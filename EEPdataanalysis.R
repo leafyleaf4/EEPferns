@@ -59,9 +59,9 @@ sum_table
 
 #graph for mean, SEM, and raw data points 
 ggplot()+
-  geom_point(data =ferndata, aes(x=Substrate , y=frondlength, col=Substrate), shape=21)+
-  geom_point(data = ferndata, aes(x=Substrate , y=frondlength, col=Substrate), stat="summary", fun="mean", size=3)+
-  geom_errorbar(data=sum_table, aes(x=Substrate, ymin=(mean_frondlength-se_length), ymax=(mean_frondlength+se_length), col=Substrate), width=0.1)+
+  geom_point(data =ferndata, aes(x=Substrate , y=frondlength), shape=21)+
+  geom_point(data = ferndata, aes(x=Substrate , y=frondlength), stat="summary", fun="mean", size=3)+
+  geom_errorbar(data=sum_table, aes(x=Substrate, ymin=(mean_frondlength-se_length), ymax=(mean_frondlength+se_length)), width=0.1)+
   scale_x_discrete(labels=c("concrete"="Artificial Rock", "rock"="Natural Rock", "soil"="Soil"))+
   labs(x= "Substrate", y= "Frond Length (mm)")+
   theme_few()+
@@ -121,6 +121,15 @@ simulateResiduals(fittedModel = test2, plot=T) #checking assumptions using DHARM
 #trying again but logging 
 ferndata<- ferndata %>% mutate(log_frondlength=log(frondlength), log_bladelength=log(bladelength))
 
+
+
+
+
+
+
+
+
+
 #same again but with logged frondlength USE THIS ONE!!!!!!
 test3<-lmer(log_frondlength~Substrate+(1|Species), data=ferndata, REML=TRUE)
 anova(test3) 
@@ -142,10 +151,11 @@ simulateResiduals(fittedModel = test3, plot=T)
 
 
 #tukeys test time: 
-emmeans(test3, list(pairwise~Substrate), adjust ="tukey")
+tukeytest<- emmeans(test3, list(pairwise~Substrate), adjust ="tukey")
 #from this, need to back-transform means (exponentiate), to get percentage difference between each 
+tukeytest
 
-
+plot(tukeytest)
 
 
 
@@ -154,6 +164,36 @@ emmeans(test3, list(pairwise~Substrate), adjust ="tukey")
 
 #use code i used for PCE report in this too 
 species_sum <- ferndata %>% group_by(Substrate) %>%  count(Species)
+
+
+
+
+
+#anova for fertile frond ratio 
+
+fertrat<- lm(fertileratio~Substrate, data = ferndata)
+
+par(mfrow = c(1,2))  
+hist(fertrat$residuals)   # Makes histogram of residuals  
+plot(fertrat, which = 2)   # Makes Q-Q plot
+par(mfrow = c(1,1))
+#normality is fine 
+
+# Checking homoscedasticity 
+plot(fertrat, which = 1)  # Makes residuals VS fitted plot
+#kinda violated - run welch f test instead? 
+
+
+anova(fertrat)
+
+
+
+test4<-lmer(fertileratio~Substrate+(1|Species), data=ferndata, REML=TRUE) #make mixed effects test 
+anova(test4) # run anova 
+simulateResiduals(fittedModel = test4, plot=T) #check assumptions 
+R2GLMER(test4)
+
+
 
 
 

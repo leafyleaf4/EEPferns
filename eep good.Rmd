@@ -1,0 +1,97 @@
+---
+title: "EEP analysis good copy"
+output: html_document
+date: "2026-03-03"
+---
+
+
+load libraries 
+```{r}
+library(tidyverse) 
+library(readxl) 
+library(lme4) #for fancy modelling 
+library(lmerTest) #testing lmer
+library(scales) #not using yet
+library(DHARMa) #using this!
+library(StatisticalModels) #for r2 glmer however???? it doesnt work :(
+library(ggeffects) #not using yet 
+library(performance) #not usiung yet 
+library(ggthemes) #for pretty grpahs
+library(emmeans) # for tukesy test
+```
+
+load data 
+```{r}
+ferndata<-read_excel("ferndata.xlsx")
+
+ferndata %>% group_by(Substrate) %>% summarise(meanfrond = mean(frondlength))
+```
+
+data wrangling 
+
+```{r}
+ferndata<- ferndata %>% mutate(fertileratio= fertilefrond/numberfrond, widthlengthratio=bladewidth/bladelength) #create new columns 
+ferndata$Substrate<- as.factor(ferndata$Substrate)
+```
+
+ ANOVA with random effects for frond length
+```{r}
+test3<-lmer(log_frondlength~Substrate+(1|Species), data=ferndata, REML=TRUE)
+anova(test3) 
+#p and f value stronger than before 
+rand(test3)
+#not quite as good fit but still works well
+#cant remember what this does 
+summary(test3)
+#look at the intercept and substrate rocks and soil under fixed effects,
+#look at estimate, and from that interpret the percent change from each substrate 
+
+#get r2
+R2GLMER(test3)
+
+
+#DHARMA time 
+simulateResiduals(fittedModel = test3, plot=T)
+```
+Tukeys test 
+
+```{r}
+tukeytest<- emmeans(test3, list(pairwise~Substrate), adjust ="tukey")
+tukeytest
+```
+
+ back transform means (were logged)
+```{r}
+exp(4.46)
+#86.48751 for concrete
+
+exp(5.41)
+#223.6316 for rock
+
+exp(5.99)
+#399.4146 for soil 
+```
+ 
+ 
+ 
+figure for frond length vs substrate 
+
+```{r}
+#new table
+sum_table <- ferndata %>% group_by(Substrate) %>% summarise (mean_frondlength = mean(frondlength), sdev = sd(frondlength), se_length = sd(frondlength)/sqrt(n()))
+
+#figure 
+frondsub<- ggplot()+
+  geom_point(data =ferndata, aes(x=Substrate , y=frondlength), shape=21)+
+  geom_point(data = ferndata, aes(x=Substrate , y=frondlength), stat="summary", fun="mean", size=4)+
+  geom_errorbar(data=sum_table, aes(x=Substrate, ymin=(mean_frondlength-se_length), ymax=(mean_frondlength+se_length)), width=0.1)+
+  scale_x_discrete(labels=c("concrete"="Artificial Rock", "rock"="Natural Rock", "soil"="Soil"))+
+  labs(x= "Substrate", y= "Frond Length (mm)")+
+  theme_few()+
+  theme(legend.position = "none")
+
+ggsave("frondsub.png", width = 10, height = 7, dpi = 600)
+
+```
+
+ 
