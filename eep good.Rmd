@@ -18,28 +18,40 @@ library(ggeffects) #not using yet
 library(performance) #not usiung yet 
 library(ggthemes) #for pretty grpahs
 library(emmeans) # for tukesy test
+library(ggpredict)
 ```
 
 load data 
 ```{r}
-ferndata<-read_excel("ferndata.xlsx")
+ferndata2<-read_excel("ferndata.xlsx")
 
-ferndata %>% group_by(Substrate) %>% summarise(meanfrond = mean(frondlength))
+ferndata2 %>% group_by(Substrate) %>% summarise(meanfrond = mean(frondlength))
+
+
 ```
+
+is soil 372.449 more than rock? 
+```{r}
+585.46-383
+```
+
+
 
 data wrangling 
 
 ```{r}
-ferndata<- ferndata %>% mutate(fertileratio= fertilefrond/numberfrond, widthlengthratio=bladewidth/bladelength) #create new columns 
-ferndata$Substrate<- as.factor(ferndata$Substrate)
-ferndata<- ferndata %>% mutate(log_frondlength=log(frondlength), log_bladelength=log(bladelength), log_bladewidth=log(bladewidth), log_stipelength=log(stipelength))
+ferndata2<- ferndata %>% mutate(fertileratio= fertilefrond/numberfrond, widthlengthratio=bladewidth/bladelength) #create new columns 
+ferndata2$Substrate<- as.factor(ferndata2$Substrate)
+ferndata2<- ferndata2 %>% mutate(log_frondlength=log(frondlength), log_bladelength=log(bladelength), log_bladewidth=log(bladewidth), log_stipelength=log(stipelength))
 ```
+
+
 
  ANOVA with random effects for frond length
  
  what does rand do 
 ```{r}
-test3<-lmer(log_frondlength~Substrate+(1|Species), data=ferndata)
+test3<-lmer(log_frondlength~Substrate+(1|Species), data=ferndata2)
 anova(test3) 
 #p and f value stronger than before 
 rand(test3)
@@ -52,51 +64,99 @@ summary(test3)
 #get r2
 R2GLMER(test3)
 
+confint(test3)
+
 
 #DHARMA time 
 simulateResiduals(fittedModel = test3, plot=T)
-```
-Tukeys test 
 
+
+```
+
+
+FROND LENGTH
 ```{r}
-tukeytest<- emmeans(test3, list(pairwise~Substrate), adjust ="tukey")
-tukeytest
+#maths
+
+#rock mean 
+exp(5.3691)
+#ROCK CI
+exp(4.8388668)
+exp(5.9251576)
+
+#soil mean 
+exp(5.3691+0.5510)
+#soil ci 
+exp(5.3691+0.1138408)
+exp(5.3691+1.0121938)
+
+#wall mean 
+exp(5.3691-0.9291)
+#wall ci 
+exp(5.3691-1.5068913)
+exp(5.3691-0.3663185)
+
+
+# soil percentage higher than rock 
+#new value - original value / origional valuie * 100 
+((372.449 - 214.6696)/ 214.6696)*100
+
 ```
 
- back transform means (were logged)
-```{r}
-exp(4.46)
-#86.48751 for concrete
+mean for rock: 214.6696
+95% CI for rock: 126.3261, 374.3374 
 
-exp(5.41)
-#223.6316 for rock
+mean for soil: 372.449
+soil ci: 240.5531, 590.6915 
 
-exp(5.99)
-#399.4146 for soil 
-```
- 
- 
+mean for wall: 84.77494
+wall ci: 47.5703, 148.8265
+
+mean for soil is 73.5 % higher than rock (Liner Mixed Effect Model t=2.439, p<0.001).
+mean for wall is significantly lower than rock (T = -3.206, P = 0.00181 )
+
+table: means for each and confidence intervals 
+
  
 figure for frond length vs substrate 
 
 ```{r}
 #new table
-sum_table <- ferndata %>% group_by(Substrate) %>% summarise (mean_frondlength = mean(frondlength), sdev = sd(frondlength), se_length = sd(frondlength)/sqrt(n()))
+sum_table <- ferndata2 %>% group_by(Substrate) %>% summarise (mean_frondlength = mean(frondlength), sdev = sd(frondlength), se_length = sd(frondlength)/sqrt(n()))
+
+frondlen_df<- data.frame(Substrate = c("Rock", "Soil", "Wall"), mean_frondlength=c(214.6696, 372.449, 84.77494), lowci=c(126.3261, 240.5531, 47.5703), highci=c(374.3374, 590.6915, 148.8265))
 
 #figure 
 frondsub<- ggplot()+
-  geom_point(data =ferndata, aes(x=Substrate , y=frondlength), shape=21)+
-  geom_point(data = ferndata, aes(x=Substrate , y=frondlength), stat="summary", fun="mean", size=4)+
-  geom_errorbar(data=sum_table, aes(x=Substrate, ymin=(mean_frondlength-se_length), ymax=(mean_frondlength+se_length)), width=0.1)+
+  geom_violin(data =ferndata2, aes(x=Substrate , y=frondlength), blade = 1.5)+
+  geom_boxplot(data = ferndata, aes(x=Substrate , y=frondlength),width=0.04, color="#55B03C", alpha=0.2)+
   labs(x= "Substrate", y= "Frond Length (mm)")+
   theme_few()+
   theme(legend.position = "none")
 
 frondsub
-ggsave("frondsub2.png", width = 10, height = 7, dpi = 600)
+ggsave("frondsub2.png", width = 9, height = 6, dpi = 600)
 
 ```
 
+
+
+frond length vs species graph 
+
+```{r}
+pussyfrond<-ggplot()+ 
+  geom_violin(data=ferndata2, aes(x=Species, y=frondlength), width = 1.25)+
+  theme_few()+
+   theme(axis.text.x = element_text(angle = 90, size = 10, hjust=1, vjust=0.5), 
+          axis.title = element_text(size=15))+
+  labs(x= "Species", y= "Frond Length (mm)")+
+  geom_boxplot(data=ferndata2, aes(x=Species, y=frondlength), width=0.05, color="grey20", alpha=0.2)
+  
+
+pussyfrond
+
+ggsave("pussyfrond.png", width = 12, height = 9, dpi = 600)
+```
 
 
 
@@ -106,7 +166,7 @@ stats for fertile frond ratio:
 ```{r}
 #anova for fertile frond ratio 
 
-fertrat<- lm(fertileratio~Substrate, data = ferndata)
+fertrat<- lm(fertileratio~Substrate, data = ferndata2)
 
 par(mfrow = c(1,2))  
 hist(fertrat$residuals)   # Makes histogram of residuals  
@@ -118,30 +178,69 @@ par(mfrow = c(1,1))
 plot(fertrat, which = 1)  # Makes residuals VS fitted plot
 #kinda violated - run welch f test instead? 
 
-
+summary(fertrat)
 anova(fertrat)
 
-
-test4<-lmer(fertileratio~Substrate+(1|Species), data=ferndata, REML=TRUE) #make mixed effects test 
+test4<-lmer(fertileratio~Substrate+(1|Species), data=ferndata2, REML=TRUE) #make mixed effects test 
 anova(test4) # run anova 
 simulateResiduals(fittedModel = test4, plot=T) #check assumptions 
 R2GLMER(test4)
+confint(test4)
+```
+
+ 
+FERTILE RATIO STUFF: 
+
+```{r}
+#rock mean
+exp(0.38955)
+#ci
+exp(0.25490189)
+exp(0.6405760)
+
+
+#soil mean 
+exp(0.38955+0.16454)
+#soilci
+exp(0.25490189-0.07769897)
+exp(0.6405760+0.2490294)
+
+
+#wall mean 
+exp(0.38955+0.27331)
+#wall ci 
+exp(0.25490189-0.08528648)
+exp(0.6405760+0.3540057)
 
 ```
 
  
-figure for frond length
+rock mean: 1.476316
+rock ci : 1.290335, 1.897574
+
+soil mean: 1.740357
+soil ci: 1.193873, 2.434169
+
+
+wall mean: 1.940334
+wall ci: 1.184849,2.703593 
+
+
+soil is not significantly higher than rock (T=1.83, P=0.06986), however wall is significantly higher than rock (t=2.96  p=0.00375)
+ 
+ 
+ 
+ 
+figure for fertile ratio
 
 ```{r}
 #new table
-sum_table2 <- ferndata %>% group_by(Substrate) %>% summarise (mean_fertrat = mean(fertileratio), sdev_fertrat = sd(fertileratio), se_fertrat = sd(fertileratio)/sqrt(n()))
+sum_table2 <- ferndata2 %>% group_by(Substrate) %>% summarise (mean_fertrat = mean(fertileratio), sdev_fertrat = sd(fertileratio), se_fertrat = sd(fertileratio)/sqrt(n()))
 
 #figure 
 fertilegraph<- ggplot()+
-  geom_violin(data =ferndata, aes(x=Substrate , y=fertileratio))+
-  geom_point(data = ferndata, aes(x=Substrate , y=fertileratio), stat="summary", fun="mean", size =3)+
-  geom_errorbar(data=sum_table2, aes(x=Substrate, ymin=(mean_fertrat-se_fertrat), ymax=(mean_fertrat+se_fertrat)), width=0.1)+
-  scale_x_discrete(labels=c("concrete"="Artificial Rock", "rock"="Natural Rock", "soil"="Soil"))+
+  geom_violin(data =ferndata2, aes(x=Substrate , y=fertileratio))+
+  geom_boxplot(data = ferndata, aes(x=Substrate , y=fertileratio),width=0.03, color="#55B03C", alpha=0.2)+
   labs(x= "Substrate", y= "Ratio of fertile fronds to total fronds")+
   ylim(0,1)+
   theme_few()+
@@ -172,7 +271,7 @@ RAbar<-ggplot(data=abundsp, aes(y=relabund, x=Species, fill=Substrate))+
           axis.title = element_text(size=15),
           legend.position = "none")+
   labs(y ="Relative Abundance")+
-  scale_fill_manual(values=c("Wall"="grey60", "Soil"="#855D38", "Rock"="#853838"))
+  scale_fill_manual(values=c("Wall"="#853838", "Soil"="#1A702E", "Rock"="grey30"))
 
 RAbar
 
@@ -186,7 +285,7 @@ now plot for blade width:
 - im thinking a lot of this would be controlled for by species
 
 ```{r}
-widthmodel<-lmer(bladewidth~Substrate + (1|Species), data=ferndata)
+widthmodel<-lmer(bladewidth~Substrate + (1|Species), data=ferndata2)
 
 anova(widthmodel)
 
@@ -195,15 +294,58 @@ simulateResiduals(fittedModel = widthmodel, plot=T)
 # try logging data - voilates lots of assumptions 
 
 
-logwidthmodel<-lmer(log_bladewidth ~Substrate +(1|Species), data=ferndata)
+logwidthmodel<-lmer(log_bladewidth ~Substrate +(1|Species), data=ferndata2)
 
-anova(logwidthmodel)
+summary(logwidthmodel)
 
 R2GLMER(logwidthmodel)
 
 simulateResiduals(fittedModel = logwidthmodel, plot=T)
 
+confint(logwidthmodel)
+
 ```
+
+blade width stats: 
+
+
+soil is significantly higher than rock (t =2.292, p = 0.0239). wall is significantly lower than rock (t = -3.006, p = 0.0033)
+
+
+```{r}
+#mean rock 
+exp(4.0484)
+#ci
+exp(3.4589705)
+exp(4.6587326)
+
+#mean soil 
+exp(4.0484+ 0.4968)
+#ci
+exp(3.4589705+0.0765225)
+exp(4.6587326+0.9297629)
+
+#mean wall
+exp(4.0484-0.8546)
+#ci 
+exp(3.4589705-1.4896301)
+exp(4.6587326-0.2857801)
+
+
+```
+
+
+soil is significantly higher than rock (t =2.292, p = 0.0239). wall is significantly lower than rock (t = -3.006, p = 0.0033)
+
+mean rock: 57.30569
+ci: 31.78424, 105.5023
+
+mean soil: 94.17926
+ci: 34.31193, 267.3331
+
+mean wall: 24.3809
+ci: 7.165948, 79.27735
+
 
 Tukeys test
 ```{r}
@@ -211,25 +353,27 @@ tukeytest3<- emmeans(logwidthmodel, list(pairwise~Substrate), adjust ="tukey")
 tukeytest3
 ```
 
+
+
 blade width graph: 
 
 
 ```{r}
 #new table
-widthtable <- ferndata %>% group_by(Substrate) %>% summarise (mean_bladewidth = mean(bladewidth), sdev_bladewidth= sd(bladewidth), se_bladewidth = sd(bladewidth)/sqrt(n()))
+widthtable <- ferndata2 %>% group_by(Substrate) %>% summarise (mean_bladewidth = mean(bladewidth), sdev_bladewidth= sd(bladewidth), se_bladewidth = sd(bladewidth)/sqrt(n()))
 
 #figure 
 frondsub<- ggplot()+
-  geom_point(data =ferndata, aes(x=Substrate , y=bladewidth), shape=21)+
-  geom_point(data = ferndata, aes(x=Substrate , y=bladewidth), stat="summary", fun="mean", size=4)+
-  geom_errorbar(data=widthtable, aes(x=Substrate, ymin=(mean_bladewidth-se_bladewidth), ymax=(mean_bladewidth+se_bladewidth)), width=0.1)+
+ geom_violin(data =ferndata2, aes(x=Substrate , y=bladewidth), width =1.5)+
+  geom_boxplot(data = ferndata, aes(x=Substrate , y=bladewidth),width=0.03, color="#55B03C", alpha=0.2)+
   labs(x= "Substrate", y= "Blade Width (mm)")+
   theme_few()+
   theme(legend.position = "none")
 
 frondsub
-ggsave("bladewidth.png", width = 10, height = 7, dpi = 600)
+ggsave("bladewidth.png", width = 9, height = 6, dpi = 600)
 ```
+
 
 
 
@@ -237,21 +381,72 @@ stipe length vs substrate
 
 
 ```{r}
-stipemod<-lmer(log_stipelength ~ Substrate + (1|Species), data=ferndata)
+stipemod<-lmer(log_stipelength ~ Substrate + (1|Species), data=ferndata2)
 anova(stipemod)
+
+summary(stipemod)
 
 R2GLMER(stipemod)
 
 simulateResiduals(fittedModel = stipemod, plot=T)
 
+confint(stipemod)
+
 ```
 
 
-tukey test for stipe: 
+stipelength stats: 
+
 ```{r}
-tukeyteststipe<- emmeans(stipemod, list(pairwise~Substrate), adjust ="tukey")
+#mean rock 
+exp(3.9838)
+#ci rock 
+exp(3.32059476)
+exp(4.6565479)
 
-tukeyteststipe 
+
+#mean soil 
+exp(3.9838+0.5965)
+#ci soil 
+exp(3.32059476+0.08032801)
+exp(4.6565479+1.1268291)
+
+
+#mean wall 
+exp(3.9838-1.2181)
+#ci wall 
+exp(3.32059476-1.92642512)
+exp(4.6565479-0.5423409) 
 ```
 
+mean rock: 53.72079
+conf int: 27.67681, 105.272
+
+
+mean soil: 97.54365
+conf int: 29.99176, 324.8544
+
+
+mean wall: 15.89016
+conf int: 4.031625, 61.20366
+
+
+
+figure for stipe: 
+
+```{r}
+stipetable <- ferndata2 %>% group_by(Substrate) %>% summarise (mean_stipe = mean(stipelength), sdev_stipe= sd(stipelength), se_stipe = sd(stipelength)/sqrt(n()))
+
+#figure 
+frondsub<- ggplot()+
+  geom_point(data =ferndata2, aes(x=Substrate , y=stipelength), shape=21)+
+  geom_point(data = ferndata2, aes(x=Substrate , y=stipelength), stat="summary", fun="mean", size=4)+
+  geom_errorbar(data=stipetable, aes(x=Substrate, ymin=(mean_stipe-se_stipe), ymax=(mean_stipe+se_stipe)), width=0.1)+
+  labs(x= "Substrate", y= "Stipe Length (mm)")+
+  theme_few()+
+  theme(legend.position = "none")
+
+frondsub
+ggsave("stipelength.png", width = 9, height = 6, dpi = 600)
+```
 
